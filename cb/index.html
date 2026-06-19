@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Carregando...</title>
+<script>
+(function () {
+  var VARIANTS = ['cb-a', 'cb-b', 'cb-c', 'cb-d', 'cb-e'];
+  var KEY = 'cb_ab_idx';
+  var idx;
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw === null || isNaN(parseInt(raw, 10))) {
+      idx = Math.floor(Math.random() * VARIANTS.length);     // visitante novo: ponto aleatório
+    } else {
+      idx = (parseInt(raw, 10) + 1) % VARIANTS.length;        // novo acesso: próxima variante
+    }
+    localStorage.setItem(KEY, String(idx));
+  } catch (e) {
+    idx = Math.floor(Math.random() * VARIANTS.length);        // sem localStorage: aleatório
+  }
+  var dest = '/' + VARIANTS[idx] + '/' + (location.search || '') + (location.hash || '');
+  location.replace(dest);
+})();
+</script>
+</head>
+<body style="background:#0E0E0E"></body>
+</html>
