@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Dashboard — Criativos Backstage A/B</title>
+<style>
+:root {
+  --bg: #0d0d0d; --card: #161616; --border: #252525;
+  --text: #e8e8e8; --muted: #888; --muted2: #444;
+  --green: #22c55e; --yellow: #eab308; --orange: #f97316;
+  --red: #ef4444; --blue: #3b82f6;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; min-height: 100vh; }
+
+header {
+  background: var(--card); border-bottom: 3px solid var(--border);
+  padding: 14px 24px; display: flex; align-items: center;
+  justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  transition: border-color .3s;
+}
+header.paused { border-bottom-color: var(--orange); }
+.header-left { display: flex; align-items: center; gap: 10px; }
+header h1 { font-size: 15px; font-weight: 600; }
+.badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; letter-spacing: .4px; }
+.badge-live   { background: #14532d; color: var(--green); }
+.badge-paused { background: #422006; color: var(--yellow); }
+.header-right { display: flex; gap: 8px; align-items: center; }
+button { border: none; cursor: pointer; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 8px; transition: opacity .2s; }
+button:hover { opacity: .82; }
+#btn-pause  { background: var(--yellow); color: #000; }
+#btn-resume { background: var(--green);  color: #000; display: none; }
+#btn-reset  { background: #1f1f1f; color: var(--red); border: 1px solid #2a2a2a; font-size: 12px; }
+
+.main { padding: 20px 24px; max-width: 1100px; margin: 0 auto; }
+
+.period-bar {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 16px; display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap; margin-bottom: 16px;
+}
+.period-bar label { font-size: 12px; color: var(--muted); }
+.period-bar input[type=date] {
+  background: #1f1f1f; border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); font-size: 13px; padding: 5px 10px; outline: none;
+}
+.period-bar input[type=date]:focus { border-color: var(--blue); }
+#btn-filter { background: var(--blue); color: #fff; font-size: 12px; padding: 6px 14px; }
+#btn-clear  { background: #1f1f1f; color: var(--muted); border: 1px solid var(--border); font-size: 12px; padding: 6px 14px; }
+.updated { font-size: 11px; color: var(--muted); margin-left: auto; }
+
+.totals-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  margin-bottom: 16px;
+}
+@media (max-width: 600px) { .totals-grid { grid-template-columns: repeat(2, 1fr); } }
+.total-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px;
+}
+.total-card .lbl { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.total-card .val { font-size: 26px; font-weight: 700; }
+.total-card .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.val-green { color: var(--green); }
+
+.winner-banner {
+  border-radius: 10px; padding: 12px 18px; margin-bottom: 16px;
+  font-size: 14px; font-weight: 600; display: none; align-items: center; gap: 10px;
+  background: #161616; border: 1px solid var(--border);
+}
+.winner-banner.show { display: flex; }
+.winner-banner.win  { background: #0f2417; border-color: var(--green); color: var(--green); }
+.winner-banner.tie  { background: #161616; border-color: var(--border); color: var(--muted); }
+
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 16px; }
+.variant-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+  border-top: 3px solid var(--vc, var(--muted)); transition: border-color .2s;
+}
+.variant-card.winner { border-color: var(--green); border-top-color: var(--green); box-shadow: 0 0 0 1px var(--green) inset; }
+.variant-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.variant-label { font-size: 13px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--vc, var(--text)); }
+.variant-trophy { font-size: 13px; }
+.variant-link { font-size: 10px; color: var(--muted); text-decoration: none; margin-left: auto; border: 1px solid var(--border); padding: 2px 6px; border-radius: 5px; }
+.variant-link:hover { color: var(--text); border-color: var(--muted); }
+.variant-sub { font-size: 11px; color: var(--muted); line-height: 1.4; margin-bottom: 12px; min-height: 46px; }
+.metrics-table { width: 100%; border-collapse: collapse; }
+.metrics-table tr td { padding: 5px 0; border-bottom: 1px solid #1f1f1f; font-size: 12px; }
+.metrics-table tr:last-child td { border-bottom: none; }
+.metrics-table .td-lbl { color: var(--muted); font-size: 11px; }
+.metrics-table .td-val { font-weight: 700; font-size: 16px; text-align: right; }
+.metrics-table .td-rate { color: var(--muted); font-size: 10px; text-align: right; white-space: nowrap; }
+
+.bar-section { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+.bar-title { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+.bar-wrap { height: 12px; background: #1f1f1f; border-radius: 10px; overflow: hidden; display: flex; }
+.bar-seg { transition: width .5s; }
+.bar-labels { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11px; color: var(--muted); margin-top: 8px; }
+.bar-labels span b { color: var(--text); }
+
+.utm-section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
+.utm-header { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; }
+table.utm-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.utm-table th { padding: 8px 14px; text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; border-bottom: 1px solid var(--border); background: #111; }
+.utm-table td { padding: 9px 14px; border-bottom: 1px solid #1a1a1a; word-break: break-all; }
+.utm-table tr:last-child td { border-bottom: none; }
+.utm-table tr:hover td { background: #1a1a1a; }
+.utm-table .rank { color: var(--muted); font-weight: 700; width: 32px; }
+.utm-table .sales-val { font-weight: 700; color: var(--green); text-align: right; }
+.utm-empty { padding: 20px 16px; color: var(--muted); font-size: 13px; }
+
+.log-section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.log-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.log-header h2 { font-size: 13px; font-weight: 600; }
+#btn-log { background: #1f1f1f; color: var(--muted); border: 1px solid #2a2a2a; font-size: 12px; }
+#webhook-log { display: none; padding: 14px 16px; font-family: monospace; font-size: 11px; color: var(--muted); white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow-y: auto; }
+</style>
+</head>
+<body>
+
+<header id="header">
+  <div class="header-left">
+    <h1>Criativos Backstage — Teste A/B (5 variantes)</h1>
+    <span class="badge badge-live" id="badge">Ao vivo</span>
+  </div>
+  <div class="header-right">
+    <button id="btn-reset" onclick="resetStats()">Zerar dados</button>
+    <button id="btn-pause"  onclick="togglePause(true)">Pausar coleta</button>
+    <button id="btn-resume" onclick="togglePause(false)">Retomar coleta</button>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="period-bar">
+    <label>De</label>
+    <input type="date" id="dt-from">
+    <label>até</label>
+    <input type="date" id="dt-to">
+    <button id="btn-filter" onclick="applyFilter()">Filtrar</button>
+    <button id="btn-clear"  onclick="clearFilter()">Limpar</button>
+    <span class="updated" id="updated">Carregando...</span>
+  </div>
+
+  <div class="totals-grid">
+    <div class="total-card">
+      <div class="lbl">Total de visitantes</div>
+      <div class="val" id="tot-visitors">—</div>
+      <div class="sub" id="tot-variants">—</div>
+    </div>
+    <div class="total-card">
+      <div class="lbl">Cliques de rolagem</div>
+      <div class="val" id="tot-scroll">—</div>
+      <div class="sub" id="tot-scroll-rate">—</div>
+    </div>
+    <div class="total-card">
+      <div class="lbl">Cliques no checkout</div>
+      <div class="val" id="tot-clicks">—</div>
+      <div class="sub" id="tot-click-rate">—</div>
+    </div>
+    <div class="total-card">
+      <div class="lbl">Vendas totais</div>
+      <div class="val val-green" id="tot-sales">—</div>
+      <div class="sub" id="tot-sale-rate">—</div>
+    </div>
+  </div>
+
+  <div class="winner-banner" id="winner-banner">
+    <span id="winner-icon">🏆</span>
+    <span id="winner-text"></span>
+  </div>
+
+  <div class="compare" id="compare"></div>
+
+  <div class="bar-section">
+    <div class="bar-title">Distribuição de visitantes entre as variantes</div>
+    <div class="bar-wrap" id="bar-wrap"></div>
+    <div class="bar-labels" id="bar-labels"></div>
+  </div>
+
+  <div class="utm-section">
+    <div class="utm-header">TOP 10 campanhas com mais vendas</div>
+    <div id="utm-body"></div>
+  </div>
+
+  <div class="log-section">
+    <div class="log-header">
+      <h2>Log de webhooks</h2>
+      <button id="btn-log" onclick="toggleLog()">Ver log</button>
+    </div>
+    <pre id="webhook-log"></pre>
+  </div>
+
+</div>
+
+<script>
+var API = 'https://mb.henryjr.com.br/criativos-backstage-stats/api';
+
+var VARIANTS = [
+  { k: 'a', color: '#a78bfa', url: 'https://criativos.metodobackstage.com.br/cb-a', title: 'Sua campanha está parada. O cliente prometeu mandar o criativo na semana passada. E você já sabe como isso vai terminar.' },
+  { k: 'b', color: '#fb923c', url: 'https://criativos.metodobackstage.com.br/cb-b', title: 'O CTR tá caindo, o ROAS tá despencando e o criativo já saturou enquanto você fica esperando o cliente mandar um novo.' },
+  { k: 'c', color: '#22d3ee', url: 'https://criativos.metodobackstage.com.br/cb-c', title: 'Todo mês tem gestor perdendo cliente não porque a campanha performou mal mas porque ficou semanas sem criativo novo pra subir.' },
+  { k: 'd', color: '#4ade80', url: 'https://criativos.metodobackstage.com.br/cb-d', title: 'Enquanto você espera o cliente mandar o criativo outro gestor já subiu cinco variações novas e tá escalando as vendas no mesmo nicho que o seu.' },
+  { k: 'e', color: '#f472b6', url: 'https://criativos.metodobackstage.com.br/cb-e', title: 'As campanhas estão paradas porque os criativos saturaram, e o cliente vai achar que a culpa é sua!' }
+];
+
+var logOpen = false;
+var filterFrom = '', filterTo = '';
+
+function n(id)  { return document.getElementById(id); }
+function fmt(v) { return (v === undefined || v === null) ? '—' : v; }
+function pct(v) { return (v !== undefined && v !== null) ? Number(v).toFixed(1) + '%' : ''; }
+function rate(v, label) { return v > 0 ? pct(v) + ' ' + label : ''; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function buildQuery() {
+  var q = [];
+  if (filterFrom) q.push('from=' + filterFrom);
+  if (filterTo)   q.push('to='   + filterTo);
+  return q.length ? '?' + q.join('&') : '';
+}
+
+function render(data) {
+  var paused = data.paused;
+
+  var header = n('header'), badge = n('badge');
+  if (paused) {
+    header.classList.add('paused');
+    badge.className = 'badge badge-paused';
+    badge.textContent = 'Pausado';
+    n('btn-pause').style.display  = 'none';
+    n('btn-resume').style.display = '';
+  } else {
+    header.classList.remove('paused');
+    badge.className = 'badge badge-live';
+    badge.textContent = 'Ao vivo';
+    n('btn-pause').style.display  = '';
+    n('btn-resume').style.display = 'none';
+  }
+
+  var totV = 0, totSc = 0, totCk = 0, totSa = 0;
+  VARIANTS.forEach(function (v) {
+    var d = data[v.k] || {};
+    v.d = d;
+    totV  += d.visitors || 0;
+    totSc += d.scroll_clicks || 0;
+    totCk += d.clicks || 0;
+    totSa += d.sales || 0;
+  });
+
+  n('tot-visitors').textContent   = fmt(totV);
+  n('tot-variants').textContent   = VARIANTS.map(function (v) { return v.k.toUpperCase() + ': ' + (v.d.visitors || 0); }).join('  ');
+  n('tot-scroll').textContent     = fmt(totSc);
+  n('tot-scroll-rate').textContent = totV > 0 ? pct(totSc / totV * 100) + ' dos visitantes' : '';
+  n('tot-clicks').textContent     = fmt(totCk);
+  n('tot-click-rate').textContent  = totV > 0 ? pct(totCk / totV * 100) + ' dos visitantes' : '';
+  n('tot-sales').textContent      = fmt(totSa);
+  n('tot-sale-rate').textContent   = totV > 0 ? pct(totSa / totV * 100) + ' de conversão' : '';
+
+  // Líder: melhor taxa de venda entre variantes com visitantes; desempate por cliques de checkout
+  var withV = VARIANTS.filter(function (v) { return (v.d.visitors || 0) > 0; });
+  var leader = null, tie = false;
+  if (withV.length) {
+    var maxSale = Math.max.apply(null, withV.map(function (v) { return v.d.sale_rate || 0; }));
+    var best = withV.filter(function (v) { return (v.d.sale_rate || 0) === maxSale; });
+    if (maxSale > 0) { leader = best[0]; tie = best.length > 1; }
+  }
+
+  // Cards
+  n('compare').innerHTML = VARIANTS.map(function (v) {
+    var d = v.d, isWin = leader && !tie && v.k === leader.k;
+    return '' +
+      '<div class="variant-card' + (isWin ? ' winner' : '') + '" style="--vc:' + v.color + '">' +
+        '<div class="variant-head">' +
+          '<span class="variant-label">Variante ' + v.k.toUpperCase() + '</span>' +
+          (isWin ? '<span class="variant-trophy">🏆</span>' : '') +
+          '<a class="variant-link" href="' + v.url + '" target="_blank" rel="noopener">abrir</a>' +
+        '</div>' +
+        '<div class="variant-sub">' + esc(v.title) + '</div>' +
+        '<table class="metrics-table">' +
+          '<tr><td class="td-lbl">Visitantes</td><td class="td-val">' + fmt(d.visitors) + '</td><td class="td-rate"></td></tr>' +
+          '<tr><td class="td-lbl">Rolagem</td><td class="td-val">' + fmt(d.scroll_clicks) + '</td><td class="td-rate">' + rate(d.scroll_rate, '') + '</td></tr>' +
+          '<tr><td class="td-lbl">Checkout</td><td class="td-val">' + fmt(d.clicks) + '</td><td class="td-rate">' + rate(d.click_rate, '') + '</td></tr>' +
+          '<tr><td class="td-lbl">Vendas</td><td class="td-val val-green">' + fmt(d.sales) + '</td><td class="td-rate">' + rate(d.sale_rate, '') + '</td></tr>' +
+        '</table>' +
+      '</div>';
+  }).join('');
+
+  // Banner do líder
+  var banner = n('winner-banner');
+  banner.className = 'winner-banner';
+  if (totV > 0) {
+    if (totSa === 0) {
+      banner.className = 'winner-banner tie show';
+      n('winner-icon').textContent = '⏳';
+      n('winner-text').textContent = 'Nenhuma venda registrada ainda. Aguarde mais dados para apontar a melhor variante.';
+    } else if (tie) {
+      banner.className = 'winner-banner tie show';
+      n('winner-icon').textContent = '🤝';
+      n('winner-text').textContent = 'Empate na maior taxa de conversão (' + pct(leader.d.sale_rate) + '). Continue o teste.';
+    } else if (leader) {
+      banner.className = 'winner-banner win show';
+      n('winner-icon').textContent = '🏆';
+      n('winner-text').textContent = 'Variante ' + leader.k.toUpperCase() + ' liderando com ' + pct(leader.d.sale_rate) + ' de conversão.';
+    }
+  }
+
+  // Barra de distribuição
+  n('bar-wrap').innerHTML = VARIANTS.map(function (v) {
+    var w = totV > 0 ? (v.d.visitors || 0) / totV * 100 : (100 / VARIANTS.length);
+    return '<div class="bar-seg" style="width:' + w.toFixed(1) + '%;background:' + v.color + '"></div>';
+  }).join('');
+  n('bar-labels').innerHTML = VARIANTS.map(function (v) {
+    var w = totV > 0 ? (v.d.visitors || 0) / totV * 100 : 0;
+    return '<span style="color:' + v.color + '">' + v.k.toUpperCase() + ': <b>' + (v.d.visitors || 0) + '</b> (' + w.toFixed(1) + '%)</span>';
+  }).join('');
+
+  n('updated').textContent = 'Atualizado em ' + new Date().toLocaleTimeString('pt-BR');
+}
+
+function renderUtm(ranking) {
+  var body = n('utm-body');
+  if (!ranking || ranking.length === 0) {
+    body.innerHTML = '<div class="utm-empty">Nenhuma venda com UTM registrada ainda.</div>';
+    return;
+  }
+  var rows = ranking.slice(0, 10).map(function (r, i) {
+    return '<tr>' +
+      '<td class="rank">' + (i + 1) + '</td>' +
+      '<td>' + esc(r.campaign) + '</td>' +
+      '<td>' + esc(r.medium)   + '</td>' +
+      '<td>' + esc(r.content)  + '</td>' +
+      '<td class="sales-val">' + r.sales + '</td>' +
+    '</tr>';
+  }).join('');
+  body.innerHTML =
+    '<table class="utm-table">' +
+    '<thead><tr><th>#</th><th>Campanha</th><th>Conjunto</th><th>Anúncio</th><th style="text-align:right">Vendas</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody>' +
+    '</table>';
+}
+
+function fetchAll() {
+  var q = buildQuery();
+  Promise.all([
+    fetch(API + '/stats'       + q).then(function (r) { return r.json(); }),
+    fetch(API + '/utm-ranking' + q).then(function (r) { return r.json(); })
+  ]).then(function (results) {
+    render(results[0]);
+    renderUtm(results[1] && results[1].ranking);
+  }).catch(function () {
+    n('updated').textContent = 'Erro ao conectar. Tentando novamente...';
+  });
+}
+
+function applyFilter() {
+  filterFrom = n('dt-from').value;
+  filterTo   = n('dt-to').value;
+  fetchAll();
+}
+function clearFilter() {
+  filterFrom = ''; filterTo = '';
+  n('dt-from').value = ''; n('dt-to').value = '';
+  fetchAll();
+}
+function togglePause(pause) {
+  fetch(API + (pause ? '/pause' : '/resume'), { method: 'POST' }).then(function () { fetchAll(); });
+}
+function resetStats() {
+  if (!confirm('Zerar todos os dados do teste (todas as variantes)? Essa ação não pode ser desfeita.')) return;
+  fetch(API + '/reset', { method: 'POST' }).then(function () { fetchAll(); });
+}
+function toggleLog() {
+  var el = n('webhook-log'), btn = n('btn-log');
+  logOpen = !logOpen;
+  if (logOpen) {
+    el.style.display = 'block';
+    btn.textContent  = 'Fechar log';
+    fetch(API + '/webhook-log')
+      .then(function (r) { return r.text(); })
+      .then(function (t) { el.textContent = t || 'Nenhum webhook recebido ainda.'; })
+      .catch(function () { el.textContent = 'Erro ao carregar log.'; });
+  } else {
+    el.style.display = 'none';
+    btn.textContent  = 'Ver log';
+  }
+}
+
+fetchAll();
+setInterval(fetchAll, 30000);
+</script>
+</body>
+</html>
