@@ -65,6 +65,21 @@ button:hover { opacity: .82; }
 .total-card .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .val-green { color: var(--green); }
 
+/* FUNIL */
+.funnel-section { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.funnel-title { font-size: 11px; color: var(--muted); margin-bottom: 14px; }
+.funnel-wrap { display: flex; align-items: center; gap: 24px; }
+.funnel-side { flex: 0 0 190px; display: flex; flex-direction: column; gap: 18px; }
+.funnel { flex: 1 1 0; min-width: 0; }
+.funnel svg { display: block; width: 100%; height: auto; max-width: 460px; margin: 0 auto; }
+@media (max-width: 620px) {
+  .funnel-wrap { flex-direction: column; align-items: stretch; }
+  .funnel-side { flex: none; flex-direction: row; flex-wrap: wrap; gap: 12px 24px; }
+}
+.fside-item { border-left: 3px solid var(--vc, var(--border)); padding-left: 12px; }
+.fside-item .fs-label { font-size: 11px; color: var(--muted); margin-bottom: 3px; line-height: 1.3; }
+.fside-item .fs-val { font-size: 24px; font-weight: 800; color: var(--vc, var(--text)); }
+
 .winner-banner {
   border-radius: 10px; padding: 12px 18px; margin-bottom: 16px;
   font-size: 14px; font-weight: 600; display: none; align-items: center; gap: 10px;
@@ -167,6 +182,14 @@ table.utm-table { width: 100%; border-collapse: collapse; font-size: 12px; }
     </div>
   </div>
 
+  <div class="funnel-section">
+    <div class="funnel-title">Funil de conversão (totais)</div>
+    <div class="funnel-wrap">
+      <div class="funnel-side" id="funnel-side"></div>
+      <div class="funnel" id="funnel"></div>
+    </div>
+  </div>
+
   <div class="winner-banner" id="winner-banner">
     <span id="winner-icon">🏆</span>
     <span id="winner-text"></span>
@@ -222,6 +245,32 @@ function buildQuery() {
   return q.length ? '?' + q.join('&') : '';
 }
 
+function buildFunnel(stages) {
+  var VB_W = 360, segH = 76, cx = VB_W / 2;
+  var nseg = stages.length;
+  var maxW = 330, minW = 96, gap = 3;
+  function level(i) { return maxW - (maxW - minW) * (i / nseg); }
+  var svg = '<svg viewBox="0 0 ' + VB_W + ' ' + (nseg * segH) + '" preserveAspectRatio="xMidYMid meet">';
+  for (var i = 0; i < nseg; i++) {
+    var topW = level(i), botW = level(i + 1);
+    var yT = i * segH, yB = yT + segH - gap, midY = (yT + yB) / 2;
+    var pts = [
+      [cx - topW / 2, yT], [cx + topW / 2, yT],
+      [cx + botW / 2, yB], [cx - botW / 2, yB]
+    ].map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
+    svg += '<polygon points="' + pts + '" fill="' + stages[i].color + '"/>' +
+      '<text x="' + cx + '" y="' + (midY - 4) + '" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" font-weight="700" fill="#0b0b0b">' + esc(stages[i].label) + '</text>' +
+      '<text x="' + cx + '" y="' + (midY + 17) + '" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="800" fill="#0b0b0b">' + fmt(stages[i].value) + '</text>';
+  }
+  return svg + '</svg>';
+}
+
+function sideItem(label, val, color) {
+  return '<div class="fside-item" style="--vc:' + color + '">' +
+    '<div class="fs-label">' + label + '</div>' +
+    '<div class="fs-val">' + val + '</div></div>';
+}
+
 function render(data) {
   var paused = data.paused;
 
@@ -258,6 +307,17 @@ function render(data) {
   n('tot-click-rate').textContent  = totV > 0 ? pct(totCk / totV * 100) + ' dos visitantes' : '';
   n('tot-sales').textContent      = fmt(totSa);
   n('tot-sale-rate').textContent   = totV > 0 ? pct(totSa / totV * 100) + ' de conversão' : '';
+
+  // Funil de conversão (totais)
+  n('funnel').innerHTML = buildFunnel([
+    { label: 'Visitantes', value: totV, color: '#3b82f6' },
+    { label: 'Cliques no checkout', value: totCk, color: '#eab308' },
+    { label: 'Vendas', value: totSa, color: '#22c55e' }
+  ]);
+  n('funnel-side').innerHTML =
+    sideItem('Visitantes → checkout', totV  > 0 ? pct(totCk / totV  * 100) : '—', '#eab308') +
+    sideItem('Checkout → vendas',     totCk > 0 ? pct(totSa / totCk * 100) : '—', '#22c55e') +
+    sideItem('Conversão total',       totV  > 0 ? pct(totSa / totV  * 100) : '—', '#ffffff');
 
   // Líder: melhor taxa de venda entre variantes com visitantes; desempate por cliques de checkout
   var withV = VARIANTS.filter(function (v) { return (v.d.visitors || 0) > 0; });
