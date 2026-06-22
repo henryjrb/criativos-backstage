@@ -8,21 +8,41 @@
 <script>
 (function () {
   var VARIANTS = ['cb-a', 'cb-b', 'cb-c', 'cb-d', 'cb-e'];
-  var KEY = 'cb_ab_idx';
-  var idx;
-  try {
-    var raw = localStorage.getItem(KEY);
-    if (raw === null || isNaN(parseInt(raw, 10))) {
-      idx = Math.floor(Math.random() * VARIANTS.length);     // visitante novo: ponto aleatório
-    } else {
-      idx = (parseInt(raw, 10) + 1) % VARIANTS.length;        // novo acesso: próxima variante
-    }
-    localStorage.setItem(KEY, String(idx));
-  } catch (e) {
-    idx = Math.floor(Math.random() * VARIANTS.length);        // sem localStorage: aleatório
+  var STATS = 'https://mb.henryjr.com.br/criativos-backstage-stats/api/stats';
+  var done = false;
+
+  function go(slug) {
+    if (done) return;
+    done = true;
+    location.replace('/' + slug + '/' + (location.search || '') + (location.hash || ''));
   }
-  var dest = '/' + VARIANTS[idx] + '/' + (location.search || '') + (location.hash || '');
-  location.replace(dest);
+  function randomSlug() {
+    return VARIANTS[Math.floor(Math.random() * VARIANTS.length)];
+  }
+
+  // Segurança: se a consulta demorar, sorteia para não travar o visitante.
+  var timer = setTimeout(function () { go(randomSlug()); }, 1500);
+
+  try {
+    fetch(STATS, { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        clearTimeout(timer);
+        // Escolhe a(s) variante(s) com menos visitantes; empate = sorteio entre elas.
+        var min = Infinity, mins = [];
+        for (var i = 0; i < VARIANTS.length; i++) {
+          var key = VARIANTS[i].slice(3); // 'cb-a' -> 'a'
+          var vis = (d[key] && typeof d[key].visitors === 'number') ? d[key].visitors : 0;
+          if (vis < min) { min = vis; mins = [VARIANTS[i]]; }
+          else if (vis === min) { mins.push(VARIANTS[i]); }
+        }
+        go(mins.length ? mins[Math.floor(Math.random() * mins.length)] : randomSlug());
+      })
+      .catch(function () { clearTimeout(timer); go(randomSlug()); });
+  } catch (e) {
+    clearTimeout(timer);
+    go(randomSlug());
+  }
 })();
 </script>
 </head>
